@@ -23,13 +23,16 @@ and NVIDIA GeForce RTX 2080 GPU with 24GB of memory.
 ## Installation Guide
 ### Setup
 To setup the package, which should take several minutes depending on your
-internet speed (for downloading dependencies), simply create a new virtual 
-environment using:
+internet speed (for downloading dependencies).
+
+First clone the repository:
+`git clone https://github.com/YonatanElul/afsrr.git`
+
+Then simply create a new virtual environment using:
 
 `conda create --name afsrr python==3.9`
 
-
-Then activate the virtual environment using:
+Activate the virtual environment using:
 
 `conda deactivate`
 
