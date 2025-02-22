@@ -17,10 +17,7 @@ import os
 import glob
 import pickle
 import random
-import sklearn
 import numpy as np
-import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
 import sklearn.metrics as sk_metrics
 
@@ -80,7 +77,7 @@ test_model_path = sorted(
 )[-1]
 
 save_dir = os.path.join(
-    EXPERIMENTS_LOGS_DIR,
+    ANALYSIS_LOGS_DIR,
     f"AF_Classifier_Test_{'NSR_Only_' if nsr_only else ''}{record_length_to_use}_Beats"
 )
 os.makedirs(save_dir, exist_ok=True)

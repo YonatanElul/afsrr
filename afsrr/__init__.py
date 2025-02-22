@@ -27,11 +27,14 @@ os.makedirs(ANALYSIS_LOGS_DIR, exist_ok=True)
 EXPERIMENTS_LOGS_DIR = os.path.join(LOGS_DIR, 'experiments')
 os.makedirs(EXPERIMENTS_LOGS_DIR, exist_ok=True)
 
+DEMO_LOGS_DIR = os.path.join(LOGS_DIR, 'demo')
+os.makedirs(DEMO_LOGS_DIR, exist_ok=True)
+
 DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
 os.makedirs(DATA_DIR, exist_ok=True)
 
-DEMO_DIR = os.path.join(DATA_DIR, 'demo')
-os.makedirs(DEMO_DIR, exist_ok=True)
+DEMO_DATA_DIR = os.path.join(DATA_DIR, 'demo')
+os.makedirs(DEMO_DATA_DIR, exist_ok=True)
 
 RAW_DATA_DIR = os.path.join(DATA_DIR, 'raw')
 os.makedirs(RAW_DATA_DIR, exist_ok=True)

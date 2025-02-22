@@ -1,17 +1,12 @@
-import os
-
-os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-
-from datetime import datetime
 from afsrr.utils.loggers import Logger
 from afsrr.utils.optim import Optimizer
 from afsrr.utils.trainers import Trainer
 from afsrr.utils.losses import AFSRRLoss
 from afsrr.data.datasets import RPeaksDataset
+from afsrr import DEMO_DATA_DIR, DEMO_LOGS_DIR
 from afsrr.models.afsrr import JointRegressionModel
-from afsrr import EXPERIMENTS_LOGS_DIR, PROCESSED_DATA_DIR
 
+import os
 import torch
 import numpy as np
 
@@ -23,38 +18,26 @@ if __name__ == '__main__':
     torch.manual_seed(seed)
 
     # Define the log dir
-    observable_dim = 64
-    n_encoder_layers = 3
-    l0_units = 64
+    observable_dim = 16
+    n_encoder_layers = 2
+    l0_units = 16
     trajectory_length = 2
     prediction_horizon = 1
     peaks_per_sample = 64
-    peaks_step = 16
-    fit_model = True
+    peaks_step = peaks_per_sample
     nsr_only = False
     record_length_to_use = None
-    date = str(datetime.today()).split()[0]
-    description = f"{observable_dim}K_" \
-                  f"{n_encoder_layers}E_" \
-                  f"{l0_units}L0_" \
-                  f"{peaks_per_sample}PPS_" \
-                  f"{peaks_step}PS_" \
-                  f"{trajectory_length}TT_" \
-                  f"{prediction_horizon}H"
-    experiment_name = f"Train_JointRegressionModel_" \
-                      f"{description}_" \
-                      f"{'NSR_Only_' if nsr_only else ''}" \
-                      f"{f'{record_length_to_use}RL_' if nsr_only else ''}" \
-                      f"{date}"
-    logs_dir = os.path.join(EXPERIMENTS_LOGS_DIR, experiment_name)
+    max_iterations_per_epoch = 5
+    experiment_name = "demo_experiment"
+    logs_dir = os.path.join(DEMO_LOGS_DIR, experiment_name)
     os.makedirs(logs_dir, exist_ok=True)
 
     # Define the Datasets & Data loaders
-    data_dir = PROCESSED_DATA_DIR
+    data_dir = DEMO_DATA_DIR
     train_dir = os.path.join(data_dir, 'Train')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     batch_size = 16
-    num_workers = 4
+    num_workers = 0
     train_ds = RPeaksDataset(
         mode='Train',
         temporal_horizon=trajectory_length,
@@ -84,41 +67,6 @@ if __name__ == '__main__':
         peaks_step=peaks_step,
         nsr_only=False,
     )
-    if nsr_only:
-        invalid_files = train_ds.invalid_files + val_ds.invalid_files + test_ds.invalid_files
-        invalid_files = list(np.unique(invalid_files).tolist())
-
-        train_ds = RPeaksDataset(
-            mode='Train',
-            temporal_horizon=trajectory_length,
-            prediction_horizon=prediction_horizon,
-            dir_path=train_dir,
-            peaks_per_sample=peaks_per_sample,
-            peaks_step=peaks_step,
-            nsr_only=False,
-            invalid_inds=invalid_files,
-            merge_modes=True,
-        )
-        val_ds = RPeaksDataset(
-            mode='Val',
-            temporal_horizon=trajectory_length,
-            prediction_horizon=prediction_horizon,
-            dir_path=train_dir,
-            peaks_per_sample=peaks_per_sample,
-            peaks_step=peaks_step,
-            nsr_only=False,
-            invalid_inds=invalid_files,
-        )
-        test_ds = RPeaksDataset(
-            mode='Test',
-            temporal_horizon=trajectory_length,
-            prediction_horizon=prediction_horizon,
-            dir_path=train_dir,
-            peaks_per_sample=peaks_per_sample,
-            peaks_step=peaks_step,
-            nsr_only=False,
-            invalid_inds=invalid_files,
-        )
 
     pin_memory = True
     drop_last = False
@@ -206,7 +154,7 @@ if __name__ == '__main__':
             **scheduler_hparams
         ),
     ]
-    num_epochs = 100
+    num_epochs = 2
     optimizer = Optimizer(
         optimizers=optimizers,
         schedulers=schedulers,
@@ -220,7 +168,7 @@ if __name__ == '__main__':
 
     # Define the logger
     logger = Logger(
-        log_dir=EXPERIMENTS_LOGS_DIR,
+        log_dir=DEMO_LOGS_DIR,
         experiment_name=experiment_name,
         max_elements=2,
     )
@@ -240,6 +188,7 @@ if __name__ == '__main__':
         logger=logger,
         clip_grad_value=clip_grad_value,
         filter_nan_grads=filter_nan_grads,
+        max_iterations_per_epoch=max_iterations_per_epoch,
     )
 
     # Write Scenario Specs
@@ -285,15 +234,14 @@ if __name__ == '__main__':
             f.write(f"{k}: {str(v)}\n")
 
     print("Fitting the model")
-    if fit_model:
-        trainer.fit(
-            dl_train=train_dl,
-            dl_val=val_dl,
-            num_epochs=num_epochs,
-            checkpoints=checkpoints,
-            checkpoints_mode=checkpoints_mode,
-            early_stopping=early_stopping,
-        )
+    trainer.fit(
+        dl_train=train_dl,
+        dl_val=val_dl,
+        num_epochs=num_epochs,
+        checkpoints=checkpoints,
+        checkpoints_mode=checkpoints_mode,
+        early_stopping=early_stopping,
+    )
 
     # Define the test-set
     print("Evaluating over the test set")
@@ -320,10 +268,17 @@ if __name__ == '__main__':
         optimizer=optimizer,
         device=device,
         logger=logger,
+        max_iterations_per_epoch=max_iterations_per_epoch,
     )
 
     # Evaluate
     trainer.evaluate(
         dl_test=test_dl,
         ignore_cap=True,
+    )
+
+    print(
+        "******************************************************************************\n"
+        "The demo run has been completed. The afsrr package was successfully installed.\n"
+        "******************************************************************************"
     )

@@ -184,7 +184,7 @@ if __name__ == '__main__':
 
         trained_ckpt = torch.load(trained_model_ckpt_path)['model']
         trained_model_params = {
-            'midst_params': model_params.copy(),
+            'dynamics_model_params': model_params.copy(),
             'n_classes': 1,
             'n_classification_layers': 3,
             'classifier_activation': 'leakyrelu',

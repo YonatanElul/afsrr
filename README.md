@@ -49,17 +49,14 @@ For further instructions please refer to the official installation guide at http
 As part of this package, and to ensure that everything is working correctly, we provided a demo script that runs a simple experiment on a small subset of the data.
 The data is included in this repository and is located under `afsrr\data\demo`.
 
-To run the demo, simply run the demo script located at: `afsrr\afsrr\run\demo\demo.py`.
+To run the demo, simply run the demo script located at: `afsrr\afsrr\run\demo\run_demo.py`.
 
 The demo script will train small regression model on the demo dataset, and then validate and test the model.
-It will then train a small AF classifier on the demo dataset, and then validate and test the model.
-
-Finally, it will analyze the results of the experiments.
 
 The training logs of the demo models will be saved in the logs directory of the project, which can be found at: `afsrr\logs\demo`.
 
 The expected output of the demo script should be:
-"The demo experiment has been completed successfully! Everything is in order."
+"The demo run has been completed. The afsrr package was successfully installed."
 
 The demo script should take around 5-20 minutes to complete, depending on your specific system.
 
