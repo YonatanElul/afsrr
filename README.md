@@ -2,7 +2,7 @@
 This is an official implementation of the code used in the paper "Atrial Fibrillation Screening During Sinus-Rhythm via Analysis of Cardiac Dynamics" - Yonatan Elul, Noam Keidar, Yael Drori, Alex M. Bronstein, Assaf Schuster, Yael Yaniv.
 
 ## System Requirements
-The package has been tested on Windows 10, Ubuntu 20.04.2 LTS, and macOS Sequoia 15.0.1 (24A348).
+The package has been tested on Ubuntu 20.04.2 LTS, and macOS Sequoia 15.0.1 (24A348).
 
 The package requires Python 3.9.6 and the following packages:
 * numpy >= 1.26.2
