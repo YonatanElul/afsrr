@@ -359,6 +359,9 @@ class NormalSinusRhythmRRReader(BasePhysioReader):
     def __init__(
             self,
             db_path: str,
+            detect_qrs_locations: bool = False,
+            cache_dir: Optional[str] = None,
+            qrs_detection_replacement_gap: float = 0.05,
             data_extenstion: str = 'ecg',
             annotation_extension: str = 'ecg',
     ):

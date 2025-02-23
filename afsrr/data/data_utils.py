@@ -10,6 +10,79 @@ import h5py as h5
 import numpy as np
 
 
+def process_single_file(args):
+    file_path, final_dir, train_ratio, val_ratio, frequency = args
+    print(f"Processing file: {file_path}")
+    
+    train_file_path = os.path.join(final_dir, 'Train', file_path.split(os.sep)[-1])
+    val_file_path = os.path.join(final_dir, 'Val', file_path.split(os.sep)[-1])
+    test_file_path = os.path.join(final_dir, 'Test', file_path.split(os.sep)[-1])
+
+    if (
+            os.path.isfile(train_file_path) and
+            os.path.isfile(val_file_path) and
+            os.path.isfile(test_file_path)
+    ):
+        return
+
+    with h5.File(file_path, 'r') as file:
+        record = file['record']
+        x = np.diff((record['x'][:] / frequency))
+        y = record['y'][:]
+        qrs = record['qrs'][:]
+
+        assert np.isnan(x).sum() == 0
+        assert np.isnan(y).sum() == 0
+        assert np.isnan(qrs).sum() == 0
+
+        assert np.isinf(x).sum() == 0
+        assert np.isinf(y).sum() == 0
+        assert np.isinf(qrs).sum() == 0
+
+        n = x.shape[0]
+        assert (n == y.shape[0] - 1) or (y.shape[0] == 0)
+        assert n == qrs.shape[0] - 1
+
+        train_end = int(train_ratio * n)
+        val_end = train_end + int(val_ratio * n)
+
+        train_x = x[:train_end]
+        val_x = x[train_end:val_end]
+        test_x = x[val_end:]
+
+        train_y = y[:train_end]
+        val_y = y[train_end:val_end]
+        test_y = y[val_end:]
+
+        train_qrs = qrs[:train_end]
+        val_qrs = qrs[train_end:val_end]
+        test_qrs = qrs[val_end:]
+
+    print(f"# Samples in file: {train_x.shape[0]}")
+    os.makedirs(os.path.join(final_dir), exist_ok=True)
+    os.makedirs(os.path.join(final_dir, 'Train'), exist_ok=True)
+    os.makedirs(os.path.join(final_dir, 'Val'), exist_ok=True)
+    os.makedirs(os.path.join(final_dir, 'Test'), exist_ok=True)
+
+    with h5.File(train_file_path, 'w') as file:
+        dataset = file.create_group('/record')
+        dataset.create_dataset('x', shape=train_x.shape, dtype=train_x.dtype, data=train_x)
+        dataset.create_dataset('y', shape=train_y.shape, dtype=train_y.dtype, data=train_y)
+        dataset.create_dataset('qrs', shape=train_qrs.shape, dtype=train_qrs.dtype, data=train_qrs)
+
+    with h5.File(val_file_path, 'w') as file:
+        dataset = file.create_group('/record')
+        dataset.create_dataset('x', shape=val_x.shape, dtype=val_x.dtype, data=val_x)
+        dataset.create_dataset('y', shape=val_y.shape, dtype=val_y.dtype, data=val_y)
+        dataset.create_dataset('qrs', shape=val_qrs.shape, dtype=val_qrs.dtype, data=val_qrs)
+
+    with h5.File(test_file_path, 'w') as file:
+        dataset = file.create_group('/record')
+        dataset.create_dataset('x', shape=test_x.shape, dtype=test_x.dtype, data=test_x)
+        dataset.create_dataset('y', shape=test_y.shape, dtype=test_y.dtype, data=test_y)
+        dataset.create_dataset('qrs', shape=test_qrs.shape, dtype=test_qrs.dtype, data=test_qrs)
+
+
 def split_data(
         raw_dir: str,
         save_dir: str,
@@ -29,75 +102,18 @@ def split_data(
         os.path.join(save_dir, db_name + '_' + f.split(os.sep)[-2])
         for f in files
     ]
-    for i, f in enumerate(files):
-        print(f"Splitting file {i + 1} / {len(files)}")
-        with h5.File(f, 'r') as file:
-            train_file_path = os.path.join(final_dirs[i], 'Train', f.split(os.sep)[-1])
-            val_file_path = os.path.join(final_dirs[i], 'Val', f.split(os.sep)[-1])
-            test_file_path = os.path.join(final_dirs[i], 'Test', f.split(os.sep)[-1])
 
-            if (
-                    os.path.isfile(train_file_path) and
-                    os.path.isfile(val_file_path) and
-                    os.path.isfile(test_file_path)
-            ):
-                continue
+    args = [
+        (f, fd, train_ratio, val_ratio, frequency)
+        for f, fd in zip(files, final_dirs)
+    ]
 
-            record = file['record']
-            x = np.diff((record['x'][:] / frequency))
-            y = record['y'][:]
-            qrs = record['qrs'][:]
-
-            assert np.isnan(x).sum() == 0
-            assert np.isnan(y).sum() == 0
-            assert np.isnan(qrs).sum() == 0
-
-            assert np.isinf(x).sum() == 0
-            assert np.isinf(y).sum() == 0
-            assert np.isinf(qrs).sum() == 0
-
-            n = x.shape[0]
-            assert (n == y.shape[0] - 1) or (y.shape[0] == 0)
-            assert n == qrs.shape[0] - 1
-
-            train_end = int(train_ratio * n)
-            val_end = train_end + int(val_ratio * n)
-
-            train_x = x[:train_end]
-            val_x = x[train_end:val_end]
-            test_x = x[val_end:]
-
-            train_y = y[:train_end]
-            val_y = y[train_end:val_end]
-            test_y = y[val_end:]
-
-            train_qrs = qrs[:train_end]
-            val_qrs = qrs[train_end:val_end]
-            test_qrs = qrs[val_end:]
-
-        print(f"# Samples in file {i + 1}: {train_x.shape[0]}")
-        os.makedirs(os.path.join(final_dirs[i]), exist_ok=True)
-        os.makedirs(os.path.join(final_dirs[i], 'Train'), exist_ok=True)
-        os.makedirs(os.path.join(final_dirs[i], 'Val'), exist_ok=True)
-        os.makedirs(os.path.join(final_dirs[i], 'Test'), exist_ok=True)
-
-        with h5.File(train_file_path, 'w') as file:
-            dataset = file.create_group('/record')
-            dataset.create_dataset('x', shape=train_x.shape, dtype=train_x.dtype, data=train_x)
-            dataset.create_dataset('y', shape=train_y.shape, dtype=train_y.dtype, data=train_y)
-            dataset.create_dataset('qrs', shape=train_qrs.shape, dtype=train_qrs.dtype, data=train_qrs)
-
-        with h5.File(val_file_path, 'w') as file:
-            dataset = file.create_group('/record')
-            dataset.create_dataset('x', shape=val_x.shape, dtype=val_x.dtype, data=val_x)
-            dataset.create_dataset('y', shape=val_y.shape, dtype=val_y.dtype, data=val_y)
-            dataset.create_dataset('qrs', shape=val_qrs.shape, dtype=val_qrs.dtype, data=val_qrs)
-
-        with h5.File(test_file_path, 'w') as file:
-            dataset = file.create_group('/record')
-            dataset.create_dataset('x', shape=test_x.shape, dtype=test_x.dtype, data=test_x)
-            dataset.create_dataset('y', shape=test_y.shape, dtype=test_y.dtype, data=test_y)
-            dataset.create_dataset('qrs', shape=test_qrs.shape, dtype=test_qrs.dtype, data=test_qrs)
+    if n_workers > 1:
+        with Pool(processes=n_workers) as pool:
+            pool.map(process_single_file, args)
+    else:
+        for arg in args:
+            process_single_file(arg)
 
 
 def get_train_val_test_records_from_lines(lines: Sequence[str]) -> List[str]:
