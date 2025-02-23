@@ -1,6 +1,6 @@
 from torch.utils.data import Dataset, DataLoader
 from torch import from_numpy, Tensor, float32, int64
-from typing import Dict, List, Union, Sequence, Optional
+from typing import Dict, List, Union, Sequence, Optional, Tuple
 from afsrr.utils.defaults import (
     OTHER_KEY,
     GT_TENSOR_INPUTS_KEY,
@@ -14,6 +14,30 @@ import numpy as np
 
 
 class RPeaksDataset(Dataset):
+    """
+    Dataset class for handling R-peak data from ECG recordings.
+    
+    This dataset loads and processes data files, optionally filtering for normal sinus rhythm (NSR)
+    segments and handling different data splitting strategies.
+
+    Args:
+        mode (str): Dataset mode ('Train', 'Val', or 'Test')
+        temporal_horizon (int): Number of time steps to look back
+        prediction_horizon (int, optional): Number of time steps to predict ahead. Defaults to 1
+        peaks_per_sample (int, optional): Number of R-peaks per sample. Defaults to 50
+        peaks_step (int, optional): Step size between consecutive peak windows. Defaults to 5
+        dir_path (Union[str, Sequence[str]], optional): Path(s) to data directory. Defaults to None
+        nsr_only (bool, optional): Whether to only use normal sinus rhythm segments. Defaults to False
+        record_length_to_use (Optional[int], optional): Fixed length to use from each record. Defaults to None
+        with_labels (bool, optional): Whether to include rhythm labels. Defaults to False
+        invalid_inds (Optional[List[int]], optional): Indices of records to exclude. Defaults to []
+        records_paths (Optional[Sequence[str]], optional): Direct paths to record files. Defaults to None
+        nsr_from_start (bool, optional): Take NSR segment from start of recording. Defaults to True
+        nsr_from_end (bool, optional): Take NSR segment from end of recording. Defaults to False
+        nsr_from_middle (bool, optional): Take NSR segment from middle of recording. Defaults to False
+        merge_modes (bool, optional): Whether to merge train/val/test data. Defaults to False
+    """
+
     def __init__(
             self,
             mode: str,
@@ -248,7 +272,16 @@ class RPeaksDataset(Dataset):
             self._xs = xs
             self._ys = ys
 
-    def _find_longest_nsr_sequence(self, nsr_indices: np.ndarray) -> (int, int):
+    def _find_longest_nsr_sequence(self, nsr_indices: np.ndarray) -> Tuple[int, int]:
+        """
+        Find the longest continuous sequence of normal sinus rhythm (NSR) beats.
+
+        Args:
+            nsr_indices (np.ndarray): Array of indices where NSR was detected
+
+        Returns:
+            Tuple[int, int]: Start and end indices of the longest NSR sequence
+        """
         # Find all continuous sequences
         nsr_indices_diff = np.diff(nsr_indices)
         longest_sequence_start = 0
@@ -279,15 +312,38 @@ class RPeaksDataset(Dataset):
         return longest_sequence_start, longest_sequence_end - 1
 
     def __enter__(self):
+        """Context manager enter method"""
         pass
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit method"""
         pass
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """
+        Get the length of the dataset.
+
+        Returns:
+            int: Number of samples in the dataset
+        """
         return self._length
 
-    def __getitem__(self, index) -> Dict:
+    def __getitem__(self, index: int) -> Dict[str, Union[Tensor, Dict[str, Union[np.ndarray, Tensor]]]]:
+        """
+        Get a single sample from the dataset.
+
+        Args:
+            index (int): Index of the sample to retrieve
+
+        Returns:
+            Dict containing:
+                - GT_TENSOR_INPUTS_KEY: Input tensor of shape (batch, channels, time)
+                - GT_TENSOR_PREDICITONS_KEY: Target tensor of shape (batch, channels, time)
+                - OTHER_KEY: Dict containing additional data:
+                    - x_labels: Input rhythm labels
+                    - labels: Target rhythm labels
+                    - af_labels: Atrial fibrillation labels
+        """
         x_labels = np.zeros((len(self._ys), 20))
         y_labels = np.zeros((len(self._ys), 20))
         if not self._nsr_only:

@@ -11,6 +11,22 @@ import numpy as np
 
 
 def process_single_file(args):
+    """Process a single data file by splitting it into train, validation and test sets.
+
+    Args:
+        args (tuple): A tuple containing:
+            - file_path (str): Path to the input HDF5 file
+            - final_dir (str): Directory where split files will be saved
+            - train_ratio (float): Proportion of data to use for training (0-1)
+            - val_ratio (float): Proportion of data to use for validation (0-1)
+            - frequency (float): Sampling frequency of the data
+
+    The function:
+        1. Creates train/val/test subdirectories in final_dir if they don't exist
+        2. Loads and validates the input data (x, y, qrs signals)
+        3. Splits the data according to the provided ratios
+        4. Saves the split data as separate HDF5 files
+    """
     file_path, final_dir, train_ratio, val_ratio, frequency = args
     print(f"Processing file: {file_path}")
     
@@ -92,6 +108,22 @@ def split_data(
         val_ratio: float = 0.2,
         n_workers: int = 1,
 ):
+    """Split multiple data files into train, validation and test sets with optional parallelization.
+
+    Args:
+        raw_dir (str): Directory containing the raw data files
+        save_dir (str): Directory where processed files will be saved
+        db_name (str): Name of the database being processed
+        frequency (float): Sampling frequency of the data
+        train_ratio (float, optional): Proportion of data for training. Defaults to 0.6
+        val_ratio (float, optional): Proportion of data for validation. Defaults to 0.2
+        n_workers (int, optional): Number of parallel workers. Defaults to 1
+
+    Note:
+        - Test ratio is implicitly (1 - train_ratio - val_ratio)
+        - When n_workers > 1, processing is done in parallel
+        - Files are processed only if they don't already exist in the output directory
+    """
     dirs = sorted(os.listdir(raw_dir))
     files = [
         os.path.join(raw_dir, d, d + '.h5')
@@ -117,6 +149,18 @@ def split_data(
 
 
 def get_train_val_test_records_from_lines(lines: Sequence[str]) -> List[str]:
+    """Parse configuration lines to get paths to data records from different databases.
+
+    Args:
+        lines (Sequence[str]): Lines from configuration file containing record information
+
+    Returns:
+        List[str]: Combined list of file paths from all databases (ltafdb, afdb, nsrdbrr, thew)
+
+    Note:
+        Each line should be formatted as "database_name: record1 record2 record3 ..."
+        Records are combined from all databases into a single list
+    """
     ltafdb_lines = lines[0].strip(os.linesep).split(': ')
     if len(ltafdb_lines) > 1:
         ltafdb_records = [
@@ -182,6 +226,20 @@ def get_train_val_test_split():
 
 
 def write_record(index, rdr, rec, prc, save_dir):
+    """Write a single processed record to disk.
+
+    Args:
+        index (int): Index of the record to process
+        rdr (PhysioReader): Reader object for loading the raw data
+        rec (PhysioRecorder): Recorder object for saving processed data
+        prc (Optional[PhysioProcessor]): Processor object for data processing
+        save_dir (str): Directory where processed record will be saved
+
+    Note:
+        - Skips processing if the output file already exists
+        - Handles both processed and unprocessed data paths
+        - Catches and reports any processing failures
+    """
     try:
         record = rdr.read_record(index)
 
@@ -232,6 +290,19 @@ def parallel_processing(
         prc: Optional[PhysioProcessor],
         save_dir: str,
 ):
+    """Process multiple records in parallel.
+
+    Args:
+        n_workers (int): Number of parallel workers
+        inds (Sequence[int]): Indices of records to process
+        rdr (PhysioReader): Reader object for loading raw data
+        rec (PhysioRecorder): Recorder object for saving processed data
+        prc (Optional[PhysioProcessor]): Processor object for data processing
+        save_dir (str): Directory where processed records will be saved
+
+    Note:
+        Uses multiprocessing Pool to parallelize record processing
+    """
     args = list(
         zip(
             inds,

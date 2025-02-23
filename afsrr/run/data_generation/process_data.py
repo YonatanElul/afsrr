@@ -1,5 +1,4 @@
 from afsrr.data.data_utils import split_data
-
 from afsrr.data.data_utils import parallel_processing
 from afsrr.data.physionet_readers import PhysioReader
 from afsrr.data.physionet_writers import PhysioRecorder
@@ -9,9 +8,12 @@ from afsrr import PROCESSED_DATA_DIR, RAW_THEW_DB, RAW_AFDB, RAW_LTAFDB, RAW_NSR
 import os
 
 
+# Training/validation split ratios
 train_ratio = 0.6
 val_ratio = 0.2
 n_workers = 8
+
+# Initialize readers for different databases
 readers = (
     PhysioReader(
         db_path=RAW_LTAFDB,
@@ -30,16 +32,20 @@ readers = (
         db_name='thew',
     ),
 )
+
+# Create output directories
 processed_train_dir = os.path.join(PROCESSED_DATA_DIR, 'Train')
 os.makedirs(processed_train_dir, exist_ok=True)
 processed_val_dir = os.path.join(PROCESSED_DATA_DIR, 'Val')
 os.makedirs(processed_val_dir, exist_ok=True)
 processed_test_dir = os.path.join(PROCESSED_DATA_DIR, 'Test')
 os.makedirs(processed_test_dir, exist_ok=True)
+
+# Initialize processors for each database
 processors = (
     PhysioProcessor(
         output_signal='RR',
-        trim_n_seconds=500,
+        trim_n_seconds=500,  # Special case for first database
     ),
     PhysioProcessor(
         output_signal='RR',
@@ -51,7 +57,9 @@ processors = (
         output_signal='RR',
     ),
 )
+
 if __name__ == "__main__":
+    # Process each database
     for reader, processor in zip(readers, processors):
         print(f"Processing the raw {reader.db_name}")
         indices = list(range(len(reader)))
@@ -65,6 +73,8 @@ if __name__ == "__main__":
             save_dir=processed_save_dir,
             db_name=reader.db_name,
         )
+        
+        # Process records in parallel
         parallel_processing(
             n_workers=n_workers,
             inds=indices,
@@ -74,6 +84,7 @@ if __name__ == "__main__":
             save_dir=processed_save_dir,
         )
 
+    # Split processed data into train/val/test sets
     for reader in readers:
         print(f"Generating the processed train, validation, and test sets for {reader.db_name}")
         raw_dir = os.path.join(

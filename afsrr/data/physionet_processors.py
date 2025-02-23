@@ -1,4 +1,4 @@
-from typing import Union, Dict
+from typing import Union, Dict, Tuple
 
 import abc
 import numpy as np
@@ -11,19 +11,21 @@ def design_kaiser_lowpass(
         stop_db: float,
         cutoff_freq: float,
         width: float,
-) -> (np.ndarray, np.ndarray):
+) -> Tuple[np.ndarray, float]:
     """
     Design a low-pass filter using the Kaiser window method.
 
-    :param sampling_freq: (float) The original sampling frequency.
-    :param stop_db: (float) The required DB level at the stop-band.
-    :param cutoff_freq: (float) The required cutoff frequency.
-    :param width: (float) The width of the stop-band.
+    Args:
+        sampling_freq: The original sampling frequency in Hz
+        stop_db: The required attenuation in the stop-band in dB
+        cutoff_freq: The required cutoff frequency in Hz
+        width: The width of the stop-band in Hz
 
-    :return: (np.ndarray, np.ndarray) The taps and beta parameters for
-    SciPy's Kaiser filter.
+    Returns:
+        A tuple containing:
+            - taps (np.ndarray): FIR filter coefficients
+            - beta (float): Kaiser window shape parameter
     """
-
     stop_db = np.abs(stop_db)
 
     # Convert to normalized frequencies
@@ -42,13 +44,30 @@ def design_kaiser_lowpass(
 
 class ScalarNormalizer:
     """
-    Utility class for performing scalar normalization
+    Utility class for performing scalar normalization by multiplying values by a scale factor.
+    
+    Args:
+        scale: The scaling factor to multiply values by
+
+    Example:
+        >>> normalizer = ScalarNormalizer(2.0)
+        >>> normalizer(3.0)
+        6.0
     """
 
     def __init__(self, scale: Union[float, int]):
         self.scale = scale
 
     def __call__(self, value: Union[int, float, np.ndarray]) -> Union[int, float, np.ndarray]:
+        """
+        Apply the scaling normalization to a value.
+
+        Args:
+            value: Input value(s) to normalize. Can be scalar or array.
+
+        Returns:
+            Normalized value(s) after multiplying by the scale factor
+        """
         return self.scale * value
 
 
