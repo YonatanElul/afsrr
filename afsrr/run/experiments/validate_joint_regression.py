@@ -11,6 +11,7 @@ from afsrr.utils.losses import ModuleLoss
 from afsrr.data.datasets import RPeaksDataset
 from afsrr.models.afsrr import MIDST, JointRegressionModel
 from afsrr import EXPERIMENTS_LOGS_DIR, PROCESSED_DATA_DIR
+from afsrr.data.data_utils import get_train_val_test_split
 
 import glob
 import torch
@@ -52,6 +53,7 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     batch_size = 16
     num_workers = 4
+    _, val_records, _ = get_train_val_test_split
     train_ds = RPeaksDataset(
         mode='Train',
         temporal_horizon=trajectory_length,
@@ -60,6 +62,7 @@ if __name__ == '__main__':
         peaks_per_sample=peaks_per_sample,
         peaks_step=peaks_step,
         nsr_only=False,
+        records_paths=val_records,
     )
     val_ds = RPeaksDataset(
         mode='Val',
@@ -69,6 +72,7 @@ if __name__ == '__main__':
         peaks_per_sample=peaks_per_sample,
         peaks_step=peaks_step,
         nsr_only=False,
+        records_paths=val_records,
     )
     test_ds = RPeaksDataset(
         mode='Test',
@@ -78,6 +82,7 @@ if __name__ == '__main__':
         peaks_per_sample=peaks_per_sample,
         peaks_step=peaks_step,
         nsr_only=False,
+        records_paths=val_records,
     )
     if nsr_only:
         invalid_files = train_ds.invalid_files + val_ds.invalid_files + test_ds.invalid_files
@@ -92,6 +97,7 @@ if __name__ == '__main__':
             peaks_step=peaks_step,
             nsr_only=False,
             invalid_inds=invalid_files,
+            records_paths=val_records,
         )
         val_ds = RPeaksDataset(
             mode='Val',
@@ -102,6 +108,7 @@ if __name__ == '__main__':
             peaks_step=peaks_step,
             nsr_only=False,
             invalid_inds=invalid_files,
+            records_paths=val_records,
         )
         test_ds = RPeaksDataset(
             mode='Test',
@@ -112,6 +119,7 @@ if __name__ == '__main__':
             peaks_step=peaks_step,
             nsr_only=False,
             invalid_inds=invalid_files,
+            records_paths=val_records,
         )
 
     pin_memory = True

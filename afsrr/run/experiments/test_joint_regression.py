@@ -11,6 +11,7 @@ from afsrr.utils.losses import ModuleLoss
 from afsrr.data.datasets import RPeaksDataset
 from afsrr.models.afsrr import MIDST, JointRegressionModel
 from afsrr import EXPERIMENTS_LOGS_DIR, PROCESSED_DATA_DIR
+from afsrr.data.data_utils import get_train_val_test_split
 
 import glob
 import torch
@@ -62,6 +63,7 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     batch_size = 16
     num_workers = 4
+    _, _, test_records = get_train_val_test_split
     train_ds = RPeaksDataset(
         mode='Train',
         temporal_horizon=trajectory_length,
@@ -75,6 +77,7 @@ if __name__ == '__main__':
         nsr_from_start=nsr_from_start,
         nsr_from_end=nsr_from_end,
         nsr_from_middle=nsr_from_middle,
+        records_paths=test_records,
     )
     val_ds = RPeaksDataset(
         mode='Val',
@@ -89,6 +92,7 @@ if __name__ == '__main__':
         nsr_from_start=nsr_from_start,
         nsr_from_end=nsr_from_end,
         nsr_from_middle=nsr_from_middle,
+        records_paths=test_records,
     )
     test_ds = RPeaksDataset(
         mode='Test',
@@ -103,6 +107,7 @@ if __name__ == '__main__':
         nsr_from_start=nsr_from_start,
         nsr_from_end=nsr_from_end,
         nsr_from_middle=nsr_from_middle,
+        records_paths=test_records,
     )
 
     invalid_files = train_ds.invalid_files + val_ds.invalid_files + test_ds.invalid_files
@@ -121,6 +126,7 @@ if __name__ == '__main__':
         nsr_from_start=nsr_from_start,
         nsr_from_end=nsr_from_end,
         nsr_from_middle=nsr_from_middle,
+        records_paths=test_records,
     )
     val_ds = RPeaksDataset(
         mode='Val',
@@ -135,6 +141,7 @@ if __name__ == '__main__':
         nsr_from_start=nsr_from_start,
         nsr_from_end=nsr_from_end,
         nsr_from_middle=nsr_from_middle,
+        records_paths=test_records,
     )
     test_ds = RPeaksDataset(
         mode='Test',
@@ -149,6 +156,7 @@ if __name__ == '__main__':
         nsr_from_start=nsr_from_start,
         nsr_from_end=nsr_from_end,
         nsr_from_middle=nsr_from_middle,
+        records_paths=test_records,
     )
 
     pin_memory = True
