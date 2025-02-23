@@ -24,7 +24,7 @@ and NVIDIA GeForce RTX 2080 GPU with 24GB of memory.
 ### Setup
 The setup should take 2-20 minutes depending on your internet speed (for downloading dependencies).
 
-First clone the repository:
+First download the source code or clone the repository:
 `git clone https://github.com/YonatanElul/afsrr.git`
 
 Then simply create a new virtual environment using:
