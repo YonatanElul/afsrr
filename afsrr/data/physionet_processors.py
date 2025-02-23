@@ -80,7 +80,7 @@ class PhysioProcessor(abc.ABC):
             self,
             output_signal: str = 'ECG',
             trim_n_seconds: int = 0,
-            detrend: bool = True,
+            detrend: bool = False,
             scale: str = None,
             downsample_params: dict = None,
             align_ecg: bool = False,
