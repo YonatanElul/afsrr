@@ -55,7 +55,7 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     batch_size = 16
     num_workers = 4
-    train_records, _, _ = get_train_val_test_split
+    train_records, _, _ = get_train_val_test_split()
     train_ds = RPeaksDataset(
         mode='Train',
         temporal_horizon=trajectory_length,

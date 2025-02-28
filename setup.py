@@ -45,6 +45,5 @@ setup(
         'pandas==2.1.4',
         'seaborn==0.13.2',
         'ishneholterlib==2020.5.29',
-        'awscli',
     ],
 )

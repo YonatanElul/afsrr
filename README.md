@@ -90,6 +90,8 @@ Please download the THEW dataset to `afsrr\data\raw\thew`
 After downloading the raw data, you can generate the processed data using the data generation script
 located at: `afsrr\afsrr\run\data_generation\process_data.py`. The processed data will be saved by default at: `afsrr\data\processed`.
 
+NOTE THAT THIS STEP CAN TAKE A SIGNIFICANT AMOUNT OF TIME!!! i.e., several hours.
+
 Once the processing step is completed we can proceed to run our experiments.
 
 ### Running Experiments

@@ -1,8 +1,8 @@
-from afsrr import RAW_DATA_DIR
 from multiprocessing import Pool
-from typing import Sequence, List, Optional
+from typing import Sequence, List, Optional, Union
 from afsrr.data.physionet_readers import PhysioReader
 from afsrr.data.physionet_writers import PhysioRecorder
+from afsrr import RAW_DATA_DIR, PROCESSED_UNIFIED_DATA_DIR
 from afsrr.data.physionet_processors import PhysioProcessor
 
 import os
@@ -56,9 +56,6 @@ def process_single_file(args):
         assert np.isinf(qrs).sum() == 0
 
         n = x.shape[0]
-        assert (n == y.shape[0] - 1) or (y.shape[0] == 0)
-        assert n == qrs.shape[0] - 1
-
         train_end = int(train_ratio * n)
         val_end = train_end + int(val_ratio * n)
 
@@ -143,6 +140,7 @@ def split_data(
     if n_workers > 1:
         with Pool(processes=n_workers) as pool:
             pool.map(process_single_file, args)
+
     else:
         for arg in args:
             process_single_file(arg)
@@ -164,37 +162,37 @@ def get_train_val_test_records_from_lines(lines: Sequence[str]) -> List[str]:
     ltafdb_lines = lines[0].strip(os.linesep).split(': ')
     if len(ltafdb_lines) > 1:
         ltafdb_records = [
-            os.path.join(RAW_DATA_DIR, "ltafdb", f"{rec}.h5")
+            os.path.join(PROCESSED_UNIFIED_DATA_DIR, f"ltafdb_{rec}")
             for rec in ltafdb_lines[-1].split(' ')
         ]
 
     else:
         ltafdb_records = []
 
-    afdb_lines = lines[0].strip(os.linesep).split(': ')
+    afdb_lines = lines[1].strip(os.linesep).split(': ')
     if len(afdb_lines) > 1:
         afdb_records = [
-            os.path.join(RAW_DATA_DIR, "afdb", f"{rec}.h5")
+            os.path.join(PROCESSED_UNIFIED_DATA_DIR, f"afdb_{rec}")
             for rec in afdb_lines[-1].split(' ')
         ]
 
     else:
         afdb_records = []
 
-    nsrdbrr_lines = lines[0].strip(os.linesep).split(': ')
+    nsrdbrr_lines = lines[2].strip(os.linesep).split(': ')
     if len(nsrdbrr_lines) > 1:
         nsrdbrr_records = [
-            os.path.join(RAW_DATA_DIR, "nsrdbrr", f"{rec}.h5")
+            os.path.join(PROCESSED_UNIFIED_DATA_DIR, f"nsrdbrr_{rec}")
             for rec in nsrdbrr_lines[-1].split(' ')
         ]
 
     else:
         nsrdbrr_records = []
 
-    thew_lines = lines[0].strip(os.linesep).split(': ')
+    thew_lines = lines[3].strip(os.linesep).split(': ')
     if len(thew_lines) > 1:
         thew_records = [
-            os.path.join(RAW_DATA_DIR, "thew", f"{rec}.h5")
+            os.path.join(PROCESSED_UNIFIED_DATA_DIR, f"thew_{rec}")
             for rec in thew_lines[-1].split(' ')
         ]
 
@@ -225,7 +223,7 @@ def get_train_val_test_split():
     return train_records, val_records, test_records
 
 
-def write_record(index, rdr, rec, prc, save_dir):
+def write_record(index, rdr, rec, save_dir, prc=None) -> Union[str, None]:
     """Write a single processed record to disk.
 
     Args:
@@ -254,32 +252,34 @@ def write_record(index, rdr, rec, prc, save_dir):
 
         if prc is not None:
             processed_record = prc.process_record(
-                record=record['signal'][:, 0],
+                record=record['signal'] if len(record['signal'].shape) == 1 else record['signal'][:, 0],
                 qrs=record['qrs'],
                 labels=record['rhythms'],
                 frequency=rdr.frequency,
             )
-            ecg = processed_record['signal']
+            signal = processed_record['signal']
             labels = processed_record['rhythms']
             qrs = processed_record['qrs']
 
         else:
-            ecg = record['signal']
+            signal = record['signal']
             labels = record['rhythms']
             qrs = record['qrs']
 
         rec.convert_single_record(
-            x=qrs,
+            x=signal,
             raw_file_name=record['file_name'],
             y=labels,
             record_id=index,
             raw_qrs_inds=qrs,
-            additional_arrays={'ecg': ecg},
             save_dir=current_save_dir,
         )
 
-    except:
-        print(f"\n ------------- Failed on record {index} ------------- \n")
+        return None
+
+    except Exception as e:
+        print(f"\n ----- Failed on record {index}: {getattr(e, 'message', repr(e))} ----- \n")
+        return rdr.reader.files[index]
 
 
 def parallel_processing(
@@ -314,4 +314,16 @@ def parallel_processing(
     )
 
     with Pool(processes=n_workers) as pool:
-        pool.starmap(write_record, args)
+        results = pool.starmap(write_record, args)
+
+    failed_files = [
+        f
+        for f in results
+        if isinstance(f, str)
+    ]
+    failed_files_path = os.path.join(save_dir, f'{rdr.db_name}_failed_files.txt')
+    with open(failed_files_path, 'w') as f:
+        for file in failed_files:
+            f.write(f"{file}\n")
+
+    print(f"Wrote failed attempts to {failed_files_path}, try to validate that all records were downloaded correctly")

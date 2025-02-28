@@ -1,9 +1,8 @@
-from afsrr.data.data_utils import split_data
-from afsrr.data.data_utils import parallel_processing
 from afsrr.data.physionet_readers import PhysioReader
 from afsrr.data.physionet_writers import PhysioRecorder
 from afsrr.data.physionet_processors import PhysioProcessor
-from afsrr import PROCESSED_DATA_DIR, RAW_THEW_DB, RAW_AFDB, RAW_LTAFDB, RAW_NSRDBRR
+from afsrr.data.data_utils import split_data, parallel_processing, write_record
+from afsrr import PROCESSED_UNIFIED_DATA_DIR, PROCESSED_DATA_DIR, RAW_THEW_DB, RAW_AFDB, RAW_LTAFDB, RAW_NSRDBRR
 
 import os
 
@@ -33,19 +32,10 @@ readers = (
     ),
 )
 
-# Create output directories
-processed_train_dir = os.path.join(PROCESSED_DATA_DIR, 'Train')
-os.makedirs(processed_train_dir, exist_ok=True)
-processed_val_dir = os.path.join(PROCESSED_DATA_DIR, 'Val')
-os.makedirs(processed_val_dir, exist_ok=True)
-processed_test_dir = os.path.join(PROCESSED_DATA_DIR, 'Test')
-os.makedirs(processed_test_dir, exist_ok=True)
-
 # Initialize processors for each database
 processors = (
     PhysioProcessor(
         output_signal='RR',
-        trim_n_seconds=500,  # Special case for first database
     ),
     PhysioProcessor(
         output_signal='RR',
@@ -73,7 +63,16 @@ if __name__ == "__main__":
             save_dir=processed_save_dir,
             db_name=reader.db_name,
         )
-        
+
+        for index in indices:
+            write_record(
+                index=index,
+                rdr=reader,
+                rec=recorder,
+                prc=processor,
+                save_dir=processed_save_dir,
+            )
+
         # Process records in parallel
         parallel_processing(
             n_workers=n_workers,
@@ -93,7 +92,7 @@ if __name__ == "__main__":
         )
         split_data(
             raw_dir=raw_dir,
-            save_dir=processed_train_dir,
+            save_dir=PROCESSED_UNIFIED_DATA_DIR,
             db_name=reader.db_name,
             frequency=reader.frequency,
             train_ratio=train_ratio,

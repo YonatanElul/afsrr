@@ -84,21 +84,16 @@ class RPeaksDataset(Dataset):
                 (nsr_from_middle and nsr_from_end)
         )
 
-        if dir_path is not None:
-            # 1 dir per patient, 1 file per dir
-            self._patients_dirs = []
-            if isinstance(dir_path, str):
-                dir_path = [dir_path, ]
-
-            for d in dir_path:
-                self._patients_dirs += [
-                    os.path.join(d, sub_d)
-                    for sub_d in os.listdir(d)
-                    if os.path.isdir(os.path.join(d, sub_d))
-                ]
+        if records_paths is not None:
+            self._patients_dirs = records_paths
 
         else:
-            self._patients_dirs = records_paths
+            patients_dirs = os.listdir(dir_path)
+            self._patients_dirs = [
+                    os.path.join(dir_path, d)
+                    for d in patients_dirs
+                    if os.path.isdir(os.path.join(dir_path, d))
+            ]
 
         self._patients_dirs = sorted(self._patients_dirs)
         self.files = [
@@ -113,109 +108,114 @@ class RPeaksDataset(Dataset):
         ys = []
         invalid_files = []
         for f_ind, f in enumerate(self.files):
-            if merge_modes:
-                f_train = os.path.join(
-                    os.sep.join(f.split(os.sep)[:-2]),
-                    'Train',
-                    self._patients_dirs[f_ind].split(os.sep)[-1].split('_')[-1] + '.h5',
-                )
-                f_val = os.path.join(
-                    os.sep.join(f.split(os.sep)[:-2]),
-                    'Val',
-                    self._patients_dirs[f_ind].split(os.sep)[-1].split('_')[-1] + '.h5',
-                )
-                f_test = os.path.join(
-                    os.sep.join(f.split(os.sep)[:-2]),
-                    'Test',
-                    self._patients_dirs[f_ind].split(os.sep)[-1].split('_')[-1] + '.h5',
-                )
-                with h5py.File(f_train, 'r') as h5file:
-                    data_train = h5file['record']
-                    x_train = data_train['x'][:]
-                    y_train = data_train['y'][:]
+            try:
+                if merge_modes:
+                    f_train = os.path.join(
+                        os.sep.join(f.split(os.sep)[:-2]),
+                        'Train',
+                        self._patients_dirs[f_ind].split(os.sep)[-1].split('_')[-1] + '.h5',
+                    )
+                    f_val = os.path.join(
+                        os.sep.join(f.split(os.sep)[:-2]),
+                        'Val',
+                        self._patients_dirs[f_ind].split(os.sep)[-1].split('_')[-1] + '.h5',
+                    )
+                    f_test = os.path.join(
+                        os.sep.join(f.split(os.sep)[:-2]),
+                        'Test',
+                        self._patients_dirs[f_ind].split(os.sep)[-1].split('_')[-1] + '.h5',
+                    )
+                    with h5py.File(f_train, 'r') as h5file:
+                        data_train = h5file['record']
+                        x_train = data_train['x'][:]
+                        y_train = data_train['y'][:]
 
-                with h5py.File(f_val, 'r') as h5file:
-                    data_val = h5file['record']
-                    x_val = data_val['x'][:]
-                    y_val = data_val['y'][:]
+                    with h5py.File(f_val, 'r') as h5file:
+                        data_val = h5file['record']
+                        x_val = data_val['x'][:]
+                        y_val = data_val['y'][:]
 
-                with h5py.File(f_test, 'r') as h5file:
-                    data_test = h5file['record']
-                    x_test = data_test['x'][:]
-                    y_test = data_test['y'][:]
+                    with h5py.File(f_test, 'r') as h5file:
+                        data_test = h5file['record']
+                        x_test = data_test['x'][:]
+                        y_test = data_test['y'][:]
 
-                x = np.concatenate([x_train, x_val, x_test], axis=-1)
-                y = np.concatenate([y_train, y_val, y_test], axis=-1)
-
-            else:
-                with h5py.File(f, 'r') as h5file:
-                    data = h5file['record']
-                    x = data['x'][:]
-                    y = data['y'][:]
-
-            if nsr_only:
-                # Find all NSR indices
-                nsr_indices = np.concatenate([np.where(y == 0)[0], np.where(y == 1)[0]])
-
-                if not len(nsr_indices) >= record_length_to_use:
-                    invalid_files.append(f_ind)
-
-                # Find the longest continuous NSR sequence
-                start_nsr, end_nsr = self._find_longest_nsr_sequence(nsr_indices)
-
-                # Take the longest sequence as the data sequence
-                if len(nsr_indices) == 0:
-                    invalid_files.append(f_ind)
-                    nsr_x = x
-                    nsr_y = y
+                    x = np.concatenate([x_train, x_val, x_test], axis=-1)
+                    y = np.concatenate([y_train, y_val, y_test], axis=-1)
 
                 else:
-                    nsr_x = x[nsr_indices[start_nsr]:nsr_indices[end_nsr]]
-                    nsr_y = y[nsr_indices[start_nsr]:nsr_indices[end_nsr]]
+                    with h5py.File(f, 'r') as h5file:
+                        data = h5file['record']
+                        x = data['x'][:]
+                        y = data['y'][:]
 
-                if not len(nsr_x) >= record_length_to_use:
-                    invalid_files.append(f_ind)
+                if nsr_only:
+                    # Find all NSR indices
+                    nsr_indices = np.concatenate([np.where(y == 0)[0], np.where(y == 1)[0]])
 
-                if not (np.sum(np.abs(nsr_y - 1)) == 0 or np.sum(np.abs(nsr_y)) == 0):
-                    invalid_files.append(f_ind)
+                    if not len(nsr_indices) >= record_length_to_use:
+                        invalid_files.append(f_ind)
 
-                if nsr_from_start:
-                    xs.append(nsr_x[:record_length_to_use][None, None, ...])
-                    ys.append(nsr_y[:record_length_to_use][None, None, ...])
+                    # Find the longest continuous NSR sequence
+                    start_nsr, end_nsr = self._find_longest_nsr_sequence(nsr_indices)
 
-                elif nsr_from_middle:
-                    start_i = (len(nsr_x) - record_length_to_use) // 2
-                    xs.append(nsr_x[start_i:(start_i + record_length_to_use)][None, None, ...])
-                    ys.append(nsr_y[start_i:(start_i + record_length_to_use)][None, None, ...])
+                    # Take the longest sequence as the data sequence
+                    if len(nsr_indices) == 0:
+                        invalid_files.append(f_ind)
+                        nsr_x = x
+                        nsr_y = y
 
-                elif nsr_from_end:
-                    xs.append(nsr_x[-record_length_to_use:][None, None, ...])
-                    ys.append(nsr_y[-record_length_to_use:][None, None, ...])
+                    else:
+                        nsr_x = x[nsr_indices[start_nsr]:nsr_indices[end_nsr]]
+                        nsr_y = y[nsr_indices[start_nsr]:nsr_indices[end_nsr]]
 
-                self._effective_lengths.append(record_length_to_use)
+                    if not len(nsr_x) >= record_length_to_use:
+                        invalid_files.append(f_ind)
 
-            else:
-                if record_length_to_use is None:
-                    x_rec = x[None, None, ...]
-                    y_rec = y[None, None, ...]
+                    if not (np.sum(np.abs(nsr_y - 1)) == 0 or np.sum(np.abs(nsr_y)) == 0):
+                        invalid_files.append(f_ind)
+
+                    if nsr_from_start:
+                        xs.append(nsr_x[:record_length_to_use][None, None, ...])
+                        ys.append(nsr_y[:record_length_to_use][None, None, ...])
+
+                    elif nsr_from_middle:
+                        start_i = (len(nsr_x) - record_length_to_use) // 2
+                        xs.append(nsr_x[start_i:(start_i + record_length_to_use)][None, None, ...])
+                        ys.append(nsr_y[start_i:(start_i + record_length_to_use)][None, None, ...])
+
+                    elif nsr_from_end:
+                        xs.append(nsr_x[-record_length_to_use:][None, None, ...])
+                        ys.append(nsr_y[-record_length_to_use:][None, None, ...])
+
+                    self._effective_lengths.append(record_length_to_use)
 
                 else:
-                    x_rec = x[None, None, :record_length_to_use]
-                    y_rec = y[None, None, :record_length_to_use]
+                    if record_length_to_use is None:
+                        x_rec = x[None, None, ...]
+                        y_rec = y[None, None, ...]
 
-                effective_length = (
-                    (
-                        x_rec.shape[-1] -
-                        ((temporal_horizon + prediction_horizon) * peaks_per_sample)
-                    ) // peaks_step
-                )
+                    else:
+                        x_rec = x[None, None, :record_length_to_use]
+                        y_rec = y[None, None, :record_length_to_use]
 
-                if effective_length <= 0:
-                    invalid_files.append(f_ind)
+                    effective_length = (
+                        (
+                            x_rec.shape[-1] -
+                            ((temporal_horizon + prediction_horizon) * peaks_per_sample)
+                        ) // peaks_step
+                    )
 
-                xs.append(x_rec)
-                ys.append(y_rec)
-                self._effective_lengths.append(effective_length)
+                    if effective_length <= 0:
+                        invalid_files.append(f_ind)
+
+                    xs.append(x_rec)
+                    ys.append(y_rec)
+                    self._effective_lengths.append(effective_length)
+
+            except:
+                print(f"Skipping {f} -- Not Found")
+                invalid_files.append(f_ind)
 
         self.invalid_files = np.unique(invalid_files + invalid_inds).tolist()
         print(
@@ -226,7 +226,7 @@ class RPeaksDataset(Dataset):
         self.files = [
             f
             for f_ind, f in enumerate(self.files)
-            if f_ind not in self.invalid_files
+            if (f_ind not in self.invalid_files)
         ]
         self._af_labels = np.array(
             [
@@ -240,18 +240,17 @@ class RPeaksDataset(Dataset):
         effective_lengths = [
             np.array([l, ])
             for l_ind, l in enumerate(self._effective_lengths)
-            if l_ind not in self.invalid_files
-
+            if (l_ind not in self.invalid_files)
         ]
         xs = [
             x
             for x_ind, x in enumerate(xs)
-            if x_ind not in self.invalid_files
+            if (x_ind not in self.invalid_files)
         ]
         ys = [
             y
             for y_ind, y in enumerate(ys)
-            if y_ind not in self.invalid_files
+            if (y_ind not in self.invalid_files)
         ]
         self._effective_lengths = np.concatenate(effective_lengths, axis=0)
 

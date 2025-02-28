@@ -33,8 +33,6 @@ if __name__ == '__main__':
     os.makedirs(logs_dir, exist_ok=True)
 
     # Define the Datasets & Data loaders
-    data_dir = DEMO_DATA_DIR
-    train_dir = os.path.join(data_dir, 'Train')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     batch_size = 16
     num_workers = 0
@@ -42,30 +40,27 @@ if __name__ == '__main__':
         mode='Train',
         temporal_horizon=trajectory_length,
         prediction_horizon=prediction_horizon,
-        dir_path=train_dir,
+        dir_path=DEMO_DATA_DIR,
         peaks_per_sample=peaks_per_sample,
         peaks_step=peaks_step,
         nsr_only=nsr_only,
         record_length_to_use=record_length_to_use,
-        merge_modes=True,
     )
     val_ds = RPeaksDataset(
         mode='Val',
         temporal_horizon=trajectory_length,
         prediction_horizon=prediction_horizon,
-        dir_path=train_dir,
+        dir_path=DEMO_DATA_DIR,
         peaks_per_sample=peaks_per_sample,
         peaks_step=peaks_step,
-        nsr_only=False,
     )
     test_ds = RPeaksDataset(
         mode='Test',
         temporal_horizon=trajectory_length,
         prediction_horizon=prediction_horizon,
-        dir_path=train_dir,
+        dir_path=DEMO_DATA_DIR,
         peaks_per_sample=peaks_per_sample,
         peaks_step=peaks_step,
-        nsr_only=False,
     )
 
     pin_memory = True

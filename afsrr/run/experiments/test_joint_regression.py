@@ -63,7 +63,7 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     batch_size = 16
     num_workers = 4
-    _, _, test_records = get_train_val_test_split
+    _, _, test_records = get_train_val_test_split()
     train_ds = RPeaksDataset(
         mode='Train',
         temporal_horizon=trajectory_length,
@@ -236,7 +236,7 @@ if __name__ == '__main__':
             'classifier_units': 64,
         }
         m = len([m for m in trained_ckpt if 'S_per_t_per_m' in m])
-        trained_model_params['midst_params']['m_dynamics'] = m
+        trained_model_params['dynamics_model_params']['m_dynamics'] = m
         trained_model = JointRegressionModel(
             **trained_model_params
         )

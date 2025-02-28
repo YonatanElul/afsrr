@@ -54,3 +54,5 @@ os.makedirs(RAW_THEW_DB, exist_ok=True)
 PROCESSED_DATA_DIR = os.path.join(DATA_DIR, 'processed')
 os.makedirs(PROCESSED_DATA_DIR, exist_ok=True)
 
+PROCESSED_UNIFIED_DATA_DIR = os.path.join(PROCESSED_DATA_DIR, 'unified')
+os.makedirs(PROCESSED_UNIFIED_DATA_DIR, exist_ok=True)
